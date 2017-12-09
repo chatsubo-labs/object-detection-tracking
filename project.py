@@ -78,7 +78,7 @@ while(True):
     if nzCount > 1000: #check for motion
         cv2.putText(output ,'Motion', (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.9,(0,255,0),2) #write Motion in the frame
 
-################# HSV CONVERTION AND MASKING #################
+################# HSV CONVERSION AND MASKING #################
         blurred = cv2.GaussianBlur(output, (11, 11), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
         #cv2.imshow('HSV',hsv) #show hsv frame
@@ -116,7 +116,7 @@ while(True):
     for i in np.arange(1, queueSize):
         if pts[i - 1] is None or pts[i] is None:
             continue
-        thickness = int(np.sqrt(bufferSize / float(i + 1)) * 2.5) #change the thikness of the tracking path
+        thickness = int(np.sqrt(bufferSize / float(i + 1)) * 2.5) #change the thickness of the tracking path
         cv2.line(output, pts[i - 1], pts[i], queueColor, thickness) #draw the line
         queueColor = [queueColor[0]+25, queueColor[1]+25, 255] #modify the color of the tracking path
 
