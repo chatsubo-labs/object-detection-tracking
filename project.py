@@ -1,32 +1,49 @@
+#Copyright (c) 2017 N Dalal
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+
 from collections import deque
 import numpy as np
 import cv2
 
-#Queue size for tracking
-pts = deque(maxlen=20)
+################# INITIALIZATION #################
+pts = deque(maxlen=20) #Queue size for tracking
 bufferSize = 20
-counter = 0
+
 fps = 30 #fps processing speed for VideoWriter()
 
 #define green mask color in HSV
 #How to find HSV values to track?
 #https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_colorspaces/py_colorspaces.html
 lower = {'green':(25, 100, 100)} #lower bound
-upper = {'green':(45,255,255)} #upper bound
-
+upper = {'green':(45, 255, 255)} #upper bound
 
 camera = cv2.VideoCapture(0)
 grabbed, new_frame = camera.read() #start camera and get a frame
 h, w = new_frame.shape[:2]
-#set new ratio
-ratio = 0.75
+
+ratio = 0.75 #set new ratio
 h=int(h*ratio) #global Height and Width
 w=int(w*ratio) #global Height and Width
-#print(h,w)
 
 current_frame = cv2.resize(new_frame, (w, h))
 previous_frame = current_frame
-output = current_frame.copy() #output is the frame that shows all the data and tracking
 
 kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3)) #set kernel for morphologyEx
 maskKernel = np.ones((3,3),np.uint8) #set kernel for the mask
@@ -37,10 +54,12 @@ ranName = np.random.randint(1000000, size=1)
 video_out = cv2.VideoWriter('output_'+str(ranName[0])+'.avi',fourcc, int(fps), (w,h))
 
 while(True):
-    #check that the frame is grabbed
-    if not grabbed:
+    if not grabbed: #check that a frame is grabbed
         break
+
+    output = current_frame.copy()
     cv2.putText(output ,'FPS: ' + str(fps), (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9,(0,255,0),2)
+
 ################# MOTION DETECTION #################
     current_frame_gray = cv2.cvtColor(current_frame, cv2.COLOR_BGR2GRAY)
     previous_frame_gray = cv2.cvtColor(previous_frame, cv2.COLOR_BGR2GRAY)
@@ -48,16 +67,17 @@ while(True):
     frame_diff = cv2.absdiff(current_frame_gray,previous_frame_gray) #frame difference
     frame_diff = cv2.morphologyEx(frame_diff, cv2.MORPH_OPEN, kernel) #filter noises
 
-    _,thresh1 = cv2.threshold(frame_diff,50,255,cv2.THRESH_BINARY) #thresholding of frame_diff
+    _ ,thresh1 = cv2.threshold(frame_diff,50,255,cv2.THRESH_BINARY) #thresholding of frame_diff
 
     nzCount = np.count_nonzero(thresh1) #count the nonzero pixels
 
-    #cv2.imshow('A Difference of two frames',frame_diff) #show the frame difference
-    #cv2.imshow('A Difference of two frames (Threshold = 50)',thresh1) #show the frame difference with Threshold = 50
-    #print(nzCount) #non black counter
+    cv2.imshow('A Difference of two frames',frame_diff) #show the frame difference
+    cv2.imshow('A Difference of two frames (Threshold = 50)',thresh1) #show the frame difference with Threshold = 50
+    print(nzCount) #non black counter
 
     if nzCount > 1000: #check for motion
         cv2.putText(output ,'Motion', (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.9,(0,255,0),2) #write Motion in the frame
+
 ################# HSV CONVERTION AND MASKING #################
         blurred = cv2.GaussianBlur(output, (11, 11), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
@@ -67,21 +87,23 @@ while(True):
             mask = cv2.inRange(hsv, lower['green'], upper['green'])
             mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, maskKernel) #noise reduction
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, maskKernel) #noise reduction
+
 ################# FIND CONTOURS #################
             cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2] #find contours
 
-            #If you want to draw the contours:
+            #If you want to see the contours:
             #for c in cnts:
             #    peri = cv2.arcLength(c, True)
             #    approx = cv2.approxPolyDP(c, 0.01 , False)
             #    cv2.drawContours(output, [approx], -1, (255, 250, 0), 3)
 
-            #Proceed if there any contours
-            if len(cnts) > 0:
+            if len(cnts) > 0: #Proceed if there any contours
+
 ################# COMPUTE AREA AND RADIUS #################
                 c = max(cnts, key=cv2.contourArea) #find the biggest contour
                 area = cv2.contourArea(c) #calculate the area
                 ((x, y), radius) = cv2.minEnclosingCircle(c) #find the center (x,y) and the radius of the min.Enc.circle
+
 ################## DRAW A CIRCLE #################
                 if area > 1000 and radius > 10:
                     cv2.circle(output, (int(x), int(y)), int(radius), (0,0,255), 10) #draw circle
@@ -104,11 +126,8 @@ while(True):
 
     previous_frame = current_frame.copy()
     ret, new_frame = camera.read()
-    #frame = current_frame.copy()
     current_frame = cv2.resize(new_frame, (w,h))
-    output = current_frame.copy()
 
-    #cv2.imshow('frame diff ',frame_diff)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
